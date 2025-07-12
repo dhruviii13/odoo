@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -95,10 +96,16 @@ userSchema.methods.isCurrentlyBanned = function() {
   return true;
 };
 
-// Pre-save middleware to hash password (you'll implement this with bcrypt)
-userSchema.pre('save', function(next) {
-  // Password hashing logic would go here
-  next();
+// Pre-save middleware to hash password (with bcryptjs)
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default mongoose.models.User || mongoose.model('User', userSchema); 

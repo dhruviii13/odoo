@@ -1,86 +1,84 @@
 import { NextResponse } from 'next/server';
+import User from '@/models/User';
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
-export async function GET(request) {
+export async function POST(request) {
   try {
-    // Get query parameters from the request
-    const { searchParams } = new URL(request.url);
-    const username = searchParams.get('username');
-    const password = searchParams.get('password');
+    const body = await request.json();
+    const { email, password } = body;
 
-    // Validate required parameters
-    if (!username || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { 
-          error: 'Missing required parameters', 
-          message: 'Username and password are required' 
+        {
+          error: 'Missing required parameters',
+          message: 'Email and password are required'
         },
         { status: 400 }
       );
     }
 
-    // Here you would typically validate credentials against your database
-    // For now, we'll simulate a successful authentication
-    // In a real application, you would:
-    // 1. Check credentials against your database
-    // 2. Generate a JWT token or session token
-    // 3. Return the token
+    // Connect to MongoDB if not already connected
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGODB_URI);
+    }
 
-    // Simulate authentication (replace with actual auth logic)
-    if (username === 'admin' && password === 'password') {
-      // Generate a mock JWT token (in production, use a proper JWT library)
-      const token = generateMockToken(username);
-      
-      return NextResponse.json({
-        success: true,
-        token: token,
-        user: {
-          username: username,
-          role: 'admin'
-        },
-        message: 'Login successful'
-      });
-    } else {
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
       return NextResponse.json(
-        { 
+        {
           error: 'Invalid credentials',
-          message: 'Username or password is incorrect' 
+          message: 'Email or password is incorrect'
         },
         { status: 401 }
       );
     }
 
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return NextResponse.json(
+        {
+          error: 'Invalid credentials',
+          message: 'Email or password is incorrect'
+        },
+        { status: 401 }
+      );
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        sub: user._id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Return user info (excluding password)
+    return NextResponse.json({
+      success: true,
+      token: token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profilePhoto: user.profilePhoto,
+      },
+      message: 'Login successful'
+    });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        message: 'An error occurred during login' 
+        message: 'An error occurred during login'
       },
       { status: 500 }
     );
   }
-}
-
-// Helper function to generate a mock token
-function generateMockToken(username) {
-  const header = {
-    alg: 'HS256',
-    typ: 'JWT'
-  };
-  
-  const payload = {
-    sub: username,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // 24 hours
-    role: 'admin'
-  };
-
-  // In production, use a proper JWT library like 'jsonwebtoken'
-  const encodedHeader = btoa(JSON.stringify(header));
-  const encodedPayload = btoa(JSON.stringify(payload));
-  
-  // This is a mock signature - in production, use proper JWT signing
-  const signature = btoa('mock-signature-for-demo');
-  
-  return `${encodedHeader}.${encodedPayload}.${signature}`;
 }
