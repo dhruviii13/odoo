@@ -47,11 +47,15 @@ export async function GET(request) {
     // Get total count for pagination
     const total = await User.countDocuments(query);
 
-    // Add skills count to each user
-    const usersWithSkillsCount = users.map(user => ({
-      ...user,
-      skillsCount: (user.skillsOffered?.length || 0) + (user.skillsWanted?.length || 0)
-    }));
+    // Add skills count to each user for display
+    const usersWithSkillsCount = users.map(user => {
+      const skillsOfferedCount = user.skillsOffered?.length || 0;
+      const skillsWantedCount = user.skillsWanted?.length || 0;
+      return {
+        ...user,
+        skillsCount: skillsOfferedCount + skillsWantedCount
+      };
+    });
 
     return NextResponse.json({
       users: usersWithSkillsCount,
@@ -69,4 +73,4 @@ export async function GET(request) {
       { status: 500 }
     );
   }
-} 
+}
