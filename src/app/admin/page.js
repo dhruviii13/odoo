@@ -158,13 +158,6 @@ export default function AdminDashboard() {
             <p className="text-sm text-gray-300">See flagged users and content</p>
           </div>
         </a>
-        <a href="/admin/messages" className="group bg-[#1f2937] rounded-xl p-6 border border-gray-800 hover:border-indigo-400 shadow transition-all flex flex-col gap-4">
-          <div className="rounded-lg inline-flex p-3 bg-purple-900 text-purple-400"><MessageSquare className="h-6 w-6" /></div>
-          <div>
-            <h3 className="text-lg font-semibold text-white">Messages</h3>
-            <p className="text-sm text-gray-300">View and moderate platform messages</p>
-          </div>
-        </a>
       </div>
     </>
   );

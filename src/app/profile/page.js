@@ -11,6 +11,42 @@ const fetcher = ([url, token]) =>
 
 const AVAILABILITY = ["Weekends", "Evenings", "Mornings"];
 
+// TagInput component for multi-skill entry
+function TagInput({ value, onChange, placeholder }) {
+  const [input, setInput] = useState("");
+  const addTag = (e) => {
+    e.preventDefault();
+    if (input.trim() && !value.includes(input.trim())) {
+      onChange([...value, input.trim()]);
+      setInput("");
+    }
+  };
+  const removeTag = (tag) => {
+    onChange(value.filter((t) => t !== tag));
+  };
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {value.map((tag, idx) => (
+          <span key={tag+idx} className="px-3 py-1 bg-blue-900 text-blue-200 rounded-full text-xs font-semibold flex items-center gap-1">
+            {tag}
+            <button type="button" onClick={() => removeTag(tag)} className="ml-1 text-red-400">×</button>
+          </span>
+        ))}
+      </div>
+      <form onSubmit={addTag}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === ",") addTag(e); }}
+          placeholder={placeholder}
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500"
+        />
+      </form>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const [token, setToken] = useState("");
   const [tab, setTab] = useState("profile");
@@ -162,33 +198,19 @@ export default function ProfilePage() {
               </div>
               <div>
                 <label className="block text-gray-300 mb-1 font-semibold">Skills Offered</label>
-                <input
-                  name="skillsOffered"
-                  value={form.skillsOffered.join(", ")}
-                  onChange={e => handleSkills("skillsOffered", e.target.value)}
-                  placeholder="e.g. Guitar, React, Cooking"
-                  className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500"
+                <TagInput
+                  value={form.skillsOffered}
+                  onChange={skills => setForm(prev => ({ ...prev, skillsOffered: skills }))}
+                  placeholder="Add a skill and press Enter"
                 />
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {form.skillsOffered.filter(Boolean).map((skill, idx) => (
-                    <span key={skill + idx} className="px-3 py-1 bg-blue-900 text-blue-200 rounded-full text-xs font-semibold">{skill}</span>
-                  ))}
-                </div>
               </div>
               <div>
                 <label className="block text-gray-300 mb-1 font-semibold">Skills Wanted</label>
-                <input
-                  name="skillsWanted"
-                  value={form.skillsWanted.join(", ")}
-                  onChange={e => handleSkills("skillsWanted", e.target.value)}
-                  placeholder="e.g. French, Yoga, Photoshop"
-                  className="w-full px-4 py-2 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500"
+                <TagInput
+                  value={form.skillsWanted}
+                  onChange={skills => setForm(prev => ({ ...prev, skillsWanted: skills }))}
+                  placeholder="Add a skill and press Enter"
                 />
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {form.skillsWanted.filter(Boolean).map((skill, idx) => (
-                    <span key={skill + idx} className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs font-semibold">{skill}</span>
-                  ))}
-                </div>
               </div>
               <div>
                 <label className="block text-gray-300 mb-1 font-semibold">Availability</label>

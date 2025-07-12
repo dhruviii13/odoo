@@ -44,7 +44,6 @@ export default function AdminLayout({ children }) {
     { name: 'Users', href: '/admin/users', icon: <Users /> },
     { name: 'Skills', href: '/admin/skills', icon: <Shield /> },
     { name: 'Swaps', href: '/admin/swaps', icon: <Activity /> },
-    { name: 'Messages', href: '/admin/messages', icon: <MessageSquare /> },
     { name: 'Reports', href: '/admin/reports', icon: <FileText /> },
   ];
 
