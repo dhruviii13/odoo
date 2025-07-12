@@ -18,37 +18,25 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-function SidebarLink({ icon, label, href, collapsed, active, onClick }) {
+function SidebarLink({ icon, label, href, active }) {
   return (
     <Link
       href={href}
-      onClick={onClick}
-      className={`group flex items-center px-3 py-3 text-sm font-semibold transition-all duration-150
-        ${active && !collapsed ? 'bg-gradient-to-r from-purple-600/80 to-blue-500/80 text-white shadow-lg border border-accent' : ''}
-        ${!active && !collapsed ? 'text-white hover:bg-accent/10 hover:text-white border border-transparent rounded-lg' : ''}
-        ${collapsed && active ? 'bg-gradient-to-br from-purple-500 to-blue-500 w-full h-full' : ''}
-        ${collapsed ? 'justify-center' : 'rounded-lg'}`}
-      title={collapsed ? label : ''}
-      style={collapsed && active ? { borderRadius: 0 } : {}}
+      className={
+        active
+          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-4 py-3 rounded-lg flex items-center gap-3 shadow"
+          : "text-gray-400 hover:bg-gray-800 px-4 py-3 rounded-lg flex items-center gap-3 transition"
+      }
     >
-      {collapsed ? (
-        <span className="flex items-center justify-center h-8 w-8">
-          {icon}
-        </span>
-      ) : (
-        <span className={"mr-3 h-5 w-5"}>{icon}</span>
-      )}
-      {!collapsed && label}
+      <span className="h-5 w-5 flex items-center justify-center">{icon}</span>
+      <span>{label}</span>
     </Link>
   );
 }
 
 export default function AdminLayout({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
 
-  // Navigation sections
   const mainNav = [
     { name: 'Dashboard', href: '/admin', icon: <BarChart3 /> },
   ];
@@ -61,101 +49,34 @@ export default function AdminLayout({ children }) {
   ];
 
   return (
-    <div className="min-h-screen flex">
-      {/* Desktop Sidebar */}
-      <div className={`hidden lg:flex flex-col fixed z-40 glass border-r-4 border-accent shadow-xl h-screen transition-all duration-300 ${sidebarCollapsed ? 'w-16' : 'w-64'}`}> 
-        <div className="flex h-16 items-center px-4 border-b border-accent/40">
-          {!sidebarCollapsed && (
-            <h1 className="text-xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent drop-shadow-glow">
-              Admin
-            </h1>
-          )}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="ml-auto p-1 text-white hover:text-accent transition-colors"
-          >
-            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
-        </div>
-        <nav className="flex-1 space-y-6 px-2 py-4 overflow-y-auto">
-          <div>
-            <div className={`text-xs uppercase tracking-wider text-gray-400 px-3 py-2 ${sidebarCollapsed ? 'hidden' : ''}`}>Main</div>
+    <div className="flex flex-row bg-black min-h-screen">
+      {/* Sidebar */}
+      <div className="bg-[#111827] min-h-screen w-64 px-6 py-8 flex flex-col justify-between shadow-xl hidden lg:flex">
+        <div>
+          <h1 className="text-2xl font-extrabold text-white mb-8">Admin</h1>
+          <p className="text-xs font-medium text-gray-500 tracking-wider uppercase mb-2">Main</p>
+          <nav className="flex flex-col gap-1">
             {mainNav.map(item => (
-              <SidebarLink key={item.name} icon={item.icon} label={item.name} href={item.href} collapsed={sidebarCollapsed} active={pathname === item.href} />
+              <SidebarLink key={item.name} icon={item.icon} label={item.name} href={item.href} active={pathname === item.href} />
             ))}
-          </div>
-          <div>
-            <div className={`text-xs uppercase tracking-wider text-gray-400 px-3 py-2 ${sidebarCollapsed ? 'hidden' : ''}`}>Management</div>
+          </nav>
+          <p className="text-xs font-medium text-gray-500 tracking-wider uppercase mb-2 mt-4">Management</p>
+          <nav className="flex flex-col gap-1">
             {manageNav.map(item => (
-              <SidebarLink key={item.name} icon={item.icon} label={item.name} href={item.href} collapsed={sidebarCollapsed} active={pathname === item.href} />
+              <SidebarLink key={item.name} icon={item.icon} label={item.name} href={item.href} active={pathname === item.href} />
             ))}
-          </div>
-        </nav>
-        <div className="mt-auto p-4 text-xs text-center text-gray-400">
-          <span>SkillMate Admin v1.0</span>
+          </nav>
+        </div>
+        <div className="mt-8 text-xs text-center text-gray-400">
+          SkillMate Admin v1.0
         </div>
       </div>
-
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-      <div className={`fixed inset-y-0 left-0 flex w-64 flex-col glass border-r-4 border-accent shadow-xl h-screen z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:hidden`}>
-        <div className="flex h-16 items-center justify-between px-4 border-b border-accent/40">
-          <h1 className="text-xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent drop-shadow-glow">
-            Admin Panel
-          </h1>
-          <button
-            className="text-white hover:text-accent transition-colors"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-        <nav className="flex-1 space-y-6 px-2 py-4 overflow-y-auto">
-          <div>
-            <div className="text-xs uppercase tracking-wider text-gray-400 px-3 py-2">Main</div>
-            {mainNav.map(item => (
-              <SidebarLink key={item.name} icon={item.icon} label={item.name} href={item.href} collapsed={false} active={pathname === item.href} onClick={() => setSidebarOpen(false)} />
-            ))}
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-gray-400 px-3 py-2">Management</div>
-            {manageNav.map(item => (
-              <SidebarLink key={item.name} icon={item.icon} label={item.name} href={item.href} collapsed={false} active={pathname === item.href} onClick={() => setSidebarOpen(false)} />
-            ))}
-          </div>
-        </nav>
-        <div className="mt-auto p-4 text-xs text-center text-gray-400">
-          <span>SkillMate Admin v1.0</span>
-        </div>
-      </div>
-
       {/* Main content */}
-      <div className={`flex-1 min-h-screen flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
-        {/* Mobile header */}
-        <div className="lg:hidden glass border-b-4 border-accent px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="text-white hover:text-accent transition-colors"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <h1 className="text-lg font-bold text-white">Admin Panel</h1>
-            <div className="w-6"></div>
-          </div>
+      <main className="flex-1 px-8 py-12 bg-gradient-to-b from-[#0f0f23] to-black overflow-y-auto">
+        <div className="container max-w-7xl mx-auto px-6">
+          {children}
         </div>
-        {/* Page content */}
-        <main className="flex-1 py-6 px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            {children}
-          </div>
-        </main>
-      </div>
+      </main>
     </div>
   );
-}
-
-// Add this to your globals.css for a glow effect:
-// .drop-shadow-glow { text-shadow: 0 0 8px #a78bfa, 0 0 16px #818cf8; } 
+} 

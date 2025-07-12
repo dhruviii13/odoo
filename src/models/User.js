@@ -6,12 +6,12 @@ const UserSchema = new mongoose.Schema({
   location: { type: String, default: "" },
   photoUrl: { type: String, default: "" },
   cloudinaryId: { type: String, default: "" },
-  skillsOffered: { type: [String], default: [], index: true },
-  skillsWanted: { type: [String], default: [], index: true },
-  availability: { type: String, enum: ["Weekends","Evenings","Mornings"], required: true, index: true },
-  profilePublic: { type: Boolean, default: false, index: true },
+  skillsOffered: { type: [String], default: [] },
+  skillsWanted: { type: [String], default: [] },
+  availability: { type: String, enum: ["Weekends","Evenings","Mornings"], required: true },
+  profilePublic: { type: Boolean, default: false },
   role: { type: String, enum: ["user","admin"], default: "user" },
-  isBanned: { type: Boolean, default: false, index: true },
+  isBanned: { type: Boolean, default: false },
   fcmToken: { type: String, default: null },
 }, { timestamps: true });
 UserSchema.index({ email: 1 });

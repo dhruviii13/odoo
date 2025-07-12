@@ -1,236 +1,155 @@
 "use client";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import useSWR from "swr";
 
+const AVAILABILITY = ["Weekends", "Evenings", "Mornings"];
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function Home() {
   const [search, setSearch] = useState("");
-  const [skill, setSkill] = useState("");
+  const [activeFilter, setActiveFilter] = useState(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(12);
 
+  const params = new URLSearchParams();
+  if (search) params.append("search", search);
+  if (activeFilter) params.append("availability", activeFilter);
+  params.append("page", page);
+  params.append("limit", limit);
+
   const { data, isLoading, error } = useSWR(
-    `/api/user?search=${encodeURIComponent(search)}&skill=${encodeURIComponent(skill)}&page=${page}&limit=${limit}`,
+    `/api/user?${params.toString()}`,
     fetcher
   );
-
   const users = data?.users || [];
   const pagination = data?.pagination || { page: 1, pages: 1 };
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0f2027 0%, #2c5364 100%)",
-        padding: "40px 0",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-          background: "rgba(30,40,60,0.7)",
-          borderRadius: 24,
-          boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
-          border: "1px solid rgba(255,255,255,0.18)",
-          padding: 32,
-          backdropFilter: "blur(8px)",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 36,
-            fontWeight: 700,
-            color: "#fff",
-            textShadow: "0 0 8px #00fff7, 0 0 2px #fff",
-            marginBottom: 24,
-          }}
-        >
-          SkillMate: Find Skill Swap Partners
-        </h1>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setPage(1);
-          }}
-          style={{ display: "flex", gap: 16, marginBottom: 32 }}
-        >
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 8,
-              border: "1px solid #00fff7",
-              background: "rgba(255,255,255,0.1)",
-              color: "#fff",
-              outline: "none",
-              fontSize: 16,
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Filter by skill..."
-            value={skill}
-            onChange={(e) => setSkill(e.target.value)}
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 8,
-              border: "1px solid #00fff7",
-              background: "rgba(255,255,255,0.1)",
-              color: "#fff",
-              outline: "none",
-              fontSize: 16,
-            }}
-          />
-          <button
-            type="submit"
-            style={{
-              padding: "12px 24px",
-              borderRadius: 8,
-              border: "none",
-              background: "linear-gradient(90deg, #00fff7 0%, #007cf0 100%)",
-              color: "#222",
-              fontWeight: 700,
-              fontSize: 16,
-              boxShadow: "0 0 8px #00fff7",
-              cursor: "pointer",
-              transition: "background 0.2s",
-            }}
-          >
-            Search
-          </button>
-        </form>
-        {isLoading ? (
-          <div style={{ color: "#fff", fontSize: 20 }}>Loading users...</div>
-        ) : error ? (
-          <div style={{ color: "#ff4d4f", fontSize: 20 }}>Failed to load users.</div>
-        ) : users.length === 0 ? (
-          <div style={{ color: "#fff", fontSize: 20 }}>No users found.</div>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 24,
-              marginBottom: 32,
-            }}
-          >
-            {users.map((user) => (
-              <div
-                key={user._id}
-                style={{
-                  background: "rgba(0,255,247,0.08)",
-                  borderRadius: 16,
-                  padding: 20,
-                  boxShadow: "0 2px 16px 0 #00fff7",
-                  border: "1px solid #00fff7",
-                  color: "#fff",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minHeight: 180,
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: "50%",
-                    background: "#222",
-                    marginBottom: 12,
-                    border: "2px solid #00fff7",
-                    overflow: "hidden",
-                  }}
+    <div className="min-h-screen w-full font-sans">
+      {/* Hero Section */}
+      <section className="w-full py-24">
+        <div className="flex flex-col md:flex-row items-center justify-between max-w-6xl w-full mx-auto px-6 gap-12">
+          {/* Left: Text Stack */}
+          <div className="flex-1 space-y-6 text-center md:text-left">
+            <span className="inline-block bg-indigo-700 text-xs uppercase tracking-widest rounded-full px-3 py-1">New</span>
+            <h1 className="text-5xl md:text-6xl font-extrabold text-white drop-shadow-xl">Swap Skills, Build Together</h1>
+            <p className="text-lg text-gray-300 max-w-lg mx-auto md:mx-0">Connect. Learn. Grow. Offer and request skills from real people. SkillMate is your gateway to a world of collaborative learning and growth.</p>
+            {/* Search Input */}
+            <input
+              type="text"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Search for skills or people..."
+              className="w-full mt-4 px-5 py-3 rounded-xl bg-black/60 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {/* Availability Pills */}
+            <div className="flex gap-2 mt-4 justify-center md:justify-start">
+              {AVAILABILITY.map((a) => (
+                <button
+                  key={a}
+                  onClick={() => { setActiveFilter(a === activeFilter ? null : a); setPage(1); }}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition border border-transparent ${activeFilter === a ? "bg-indigo-500 text-white" : "bg-gray-800 text-white hover:bg-indigo-600"}`}
                 >
-                  {user.profilePhoto ? (
-                    <img
-                      src={user.profilePhoto}
-                      alt={user.name}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <span
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "100%",
-                        height: "100%",
-                        color: "#00fff7",
-                        fontWeight: 700,
-                        fontSize: 28,
-                      }}
-                    >
-                      {user.name?.[0] || "?"}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{user.name}</div>
-                <div style={{ fontSize: 14, color: "#00fff7", marginBottom: 6 }}>{user.email}</div>
-                <div style={{ fontSize: 14, color: "#fff", marginBottom: 6 }}>
-                  Skills Offered: {user.skillsOffered?.join(", ") || "-"}
-                </div>
-                <div style={{ fontSize: 14, color: "#fff", marginBottom: 6 }}>
-                  Skills Wanted: {user.skillsWanted?.join(", ") || "-"}
-                </div>
-                <div style={{ fontSize: 12, color: "#00fff7" }}>
-                  Swaps: {user.swapsCompleted || 0} | Feedback: {user.feedbackCount || 0}
-                </div>
-              </div>
-            ))}
+                  {a}
+                </button>
+              ))}
+            </div>
+            {/* Buttons */}
+            <div className="flex gap-4 mt-6 justify-center md:justify-start">
+              <button className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl shadow-xl font-semibold text-lg hover:scale-105 transition">Browse Skills</button>
+              <button className="border border-white px-6 py-3 text-white rounded-xl font-semibold text-lg hover:bg-white/10 transition">Post Your Profile</button>
+            </div>
           </div>
-        )}
-        {/* Pagination */}
-        {pagination.pages > 1 && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                border: "none",
-                background: page === 1 ? "#222" : "#00fff7",
-                color: page === 1 ? "#888" : "#222",
-                fontWeight: 700,
-                fontSize: 16,
-                cursor: page === 1 ? "not-allowed" : "pointer",
-                boxShadow: page === 1 ? "none" : "0 0 8px #00fff7",
-              }}
-            >
-              Prev
-            </button>
-            <span style={{ color: "#fff", fontSize: 16, alignSelf: "center" }}>
-              Page {page} of {pagination.pages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
-              disabled={page === pagination.pages}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                border: "none",
-                background: page === pagination.pages ? "#222" : "#00fff7",
-                color: page === pagination.pages ? "#888" : "#222",
-                fontWeight: 700,
-                fontSize: 16,
-                cursor: page === pagination.pages ? "not-allowed" : "pointer",
-                boxShadow: page === pagination.pages ? "none" : "0 0 8px #00fff7",
-              }}
-            >
-              Next
-            </button>
+          {/* Right: Illustration */}
+          <div className="flex-1 flex justify-center">
+            <motion.img
+              src="/hero-illustration.png"
+              alt="SkillMate Illustration"
+              className="w-full max-w-md rounded-xl object-contain drop-shadow-lg"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+            />
           </div>
-        )}
-      </div>
-    </main>
+        </div>
+      </section>
+      {/* Profile Cards Grid */}
+      <section className="w-full py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center text-gray-400 text-xl mb-8">Browse profiles</div>
+          {isLoading ? (
+            <div className="text-center text-gray-300 text-xl py-24">Loading users…</div>
+          ) : error ? (
+            <div className="text-center text-red-300 text-xl py-24">Failed to load users.</div>
+          ) : users.length === 0 ? (
+            <div className="text-center text-gray-400 text-xl py-24">No users found.</div>
+          ) :
+            <motion.div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-4" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08 } } }}>
+              {users.map((user) => (
+                <motion.div
+                  key={user._id}
+                  className="bg-gray-900 rounded-xl p-6 shadow-lg hover:shadow-xl transition flex flex-col items-center border border-gray-800 hover:scale-105 duration-150"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="w-20 h-20 rounded-full bg-gray-900 border-4 border-indigo-900 mb-4 overflow-hidden flex items-center justify-center">
+                    {user.profilePhoto ? (
+                      <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-3xl font-bold text-indigo-400">{user.name?.[0] || "?"}</span>
+                    )}
+                  </div>
+                  <div className="font-bold text-lg text-white mb-1">{user.name}</div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {(user.skillsOffered || []).map((skill) => (
+                      <span key={skill} className="px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full text-xs font-semibold">{skill}</span>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {(user.skillsWanted || []).map((skill) => (
+                      <span key={skill} className="px-2 py-0.5 bg-gray-800 text-gray-300 rounded-full text-xs font-semibold">{skill}</span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1 mb-3">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-400"></span>
+                    <span className="text-xs text-gray-400 font-medium">{user.availability || "Available"}</span>
+                  </div>
+                  <button className="w-full mt-auto py-2 px-4 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition">Request Swap</button>
+                </motion.div>
+              ))}
+            </motion.div>
+          }
+          {/* Pagination */}
+          {pagination.pages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-10">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className={`px-3 py-1 rounded-lg font-semibold border ${page === 1 ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-black text-indigo-400 border-indigo-900 hover:bg-indigo-950"}`}
+              >
+                &laquo; Prev
+              </button>
+              {Array.from({ length: pagination.pages }, (_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setPage(i + 1)}
+                  className={`px-3 py-1 rounded-lg font-semibold border ${page === i + 1 ? "bg-indigo-600 text-white border-indigo-600" : "bg-black text-indigo-400 border-indigo-900 hover:bg-indigo-950"}`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+                disabled={page === pagination.pages}
+                className={`px-3 py-1 rounded-lg font-semibold border ${page === pagination.pages ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-black text-indigo-400 border-indigo-900 hover:bg-indigo-950"}`}
+              >
+                Next &raquo;
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }

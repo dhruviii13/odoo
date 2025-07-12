@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
 import dbConnect from './db';
 import User from '../models/User';
@@ -28,46 +27,26 @@ export async function getUserFromToken(token) {
   }
 }
 
-// Get user from session (NextAuth)
-export async function getUserFromSession() {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.email) return null;
-
-    await dbConnect();
-    const user = await User.findOne({ email: session.user.email }).select('-password');
-    return user;
-  } catch (error) {
-    console.error('Error getting user from session:', error);
-    return null;
-  }
-}
-
 // Middleware for protected API routes
 export async function requireAuth(request) {
   try {
-    // Try to get user from session first
-    let user = await getUserFromSession();
+    // Get JWT token from Authorization header
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
     
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    const user = await getUserFromToken(token);
     if (!user) {
-      // Fallback to JWT token
-      const authHeader = request.headers.get('authorization');
-      const token = authHeader?.replace('Bearer ', '');
-      
-      if (!token) {
-        return NextResponse.json(
-          { error: 'Authentication required' },
-          { status: 401 }
-        );
-      }
-      
-      user = await getUserFromToken(token);
-      if (!user) {
-        return NextResponse.json(
-          { error: 'Invalid token' },
-          { status: 401 }
-        );
-      }
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
     }
     
     return user;

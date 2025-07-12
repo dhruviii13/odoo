@@ -76,9 +76,8 @@ export default function AdminUsers() {
       try {
         data = await response.json();
       } catch (err) {
-        // If not JSON, try to get text (could be HTML error page)
-        const text = await response.text();
-        console.error('Non-JSON error response:', text);
+        // If not JSON, just log the error and set a generic error message
+        console.error('Error parsing JSON response:', err);
         data = { error: 'Unexpected server error. Please check server logs.' };
       }
 

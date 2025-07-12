@@ -1,27 +1,41 @@
-import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
+import { NextResponse } from 'next/server';
+import { verifyToken, getUserFromToken } from './auth';
 import dbConnect from './db';
 import User from '../models/User';
 
 // Admin authentication middleware
-export async function requireAdmin() {
-  await dbConnect();
-  
-  // For now, we'll use a simple session check
-  // In production, you'd integrate with next-auth
-  const session = await getServerSession();
-  
-  if (!session?.user?.email) {
-    redirect('/login');
-  }
+export async function requireAdmin(request) {
+  try {
+    await dbConnect();
+    
+    // Get JWT token from Authorization header
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    const user = await getUserFromToken(token);
+    
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
 
-  const user = await User.findOne({ email: session.user.email });
-  
-  if (!user || user.role !== 'admin') {
-    redirect('/');
+    return user;
+  } catch (error) {
+    console.error('Admin auth error:', error);
+    return NextResponse.json(
+      { error: 'Authentication failed' },
+      { status: 401 }
+    );
   }
-
-  return user;
 }
 
 // Check if user is admin (returns boolean)
@@ -33,35 +47,28 @@ export async function isAdmin(email) {
   return user?.role === 'admin';
 }
 
-// Get current admin user
-export async function getCurrentAdmin() {
+// Get current admin user from JWT token
+export async function getCurrentAdmin(request) {
   try {
     await dbConnect();
     
-    // For demo purposes, we'll use a hardcoded admin email
-    // In production, this would come from the session
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@skillmate.com';
-    const user = await User.findOne({ email: adminEmail });
+    // Get JWT token from Authorization header
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      throw new Error('No authentication token provided');
+    }
+    
+    const user = await getUserFromToken(token);
     
     if (!user || user.role !== 'admin') {
-      // For demo purposes, return a mock admin user
-      return {
-        _id: 'demo-admin-id',
-        name: 'Demo Admin',
-        email: adminEmail,
-        role: 'admin'
-      };
+      throw new Error('Admin access required');
     }
     
     return user;
   } catch (error) {
-    console.error('Database connection error:', error);
-    // For demo purposes, return a mock admin user when DB is not available
-    return {
-      _id: 'demo-admin-id',
-      name: 'Demo Admin',
-      email: 'admin@skillmate.com',
-      role: 'admin'
-    };
+    console.error('Get current admin error:', error);
+    throw error;
   }
 } 

@@ -29,7 +29,7 @@
 }
 
 body {
-  background: var(--color-background);
+  background: linear-gradient(135deg, #181c2f 0%, #232946 100%);
   color: var(--color-text-primary);
   font-family: 'Inter', 'Geist', 'Segoe UI', Arial, Helvetica, sans-serif;
   font-size: 1.08rem;
