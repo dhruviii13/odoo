@@ -10,37 +10,35 @@ export async function PATCH(request, { params }) {
     await dbConnect();
     await getCurrentAdmin(); // Verify admin access
 
+    if (!params || !params.id) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    }
     const { id } = params;
-    const { isBanned, banReason, banUntil } = await request.json();
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { isBanned, banReason, banUntil } = body || {};
 
     if (typeof isBanned !== 'boolean') {
-      return NextResponse.json(
-        { error: 'isBanned must be a boolean' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'isBanned must be a boolean' }, { status: 400 });
     }
 
-    // Find the user
     const user = await User.findById(id);
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Prevent admin from banning themselves
     const currentAdmin = await getCurrentAdmin();
     if (user._id.toString() === currentAdmin._id.toString()) {
-      return NextResponse.json(
-        { error: 'Cannot ban yourself' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Cannot ban yourself' }, { status: 400 });
     }
 
-    // Update user ban status
     const updateData = { isBanned };
-    
     if (isBanned) {
       updateData.banReason = banReason || 'Violation of platform policies';
       updateData.banUntil = banUntil ? new Date(banUntil) : null;
@@ -58,11 +56,10 @@ export async function PATCH(request, { params }) {
     // Send FCM notification to user about ban status
     if (user.fcmToken) {
       const title = isBanned ? 'Account Suspended' : 'Account Restored';
-      const body = isBanned 
+      const bodyMsg = isBanned 
         ? `Your account has been suspended. Reason: ${updateData.banReason}`
         : 'Your account has been restored. You can now use the platform again.';
-      
-      await sendNotificationToUser(user.fcmToken, title, body, {
+      await sendNotificationToUser(user.fcmToken, title, bodyMsg, {
         type: 'account_status',
         isBanned: isBanned.toString()
       });
@@ -75,7 +72,7 @@ export async function PATCH(request, { params }) {
   } catch (error) {
     console.error('Admin User Ban Error:', error);
     return NextResponse.json(
-      { error: 'Failed to update user ban status' },
+      { error: error.message || 'Failed to update user ban status' },
       { status: 500 }
     );
   }

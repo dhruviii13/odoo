@@ -72,13 +72,22 @@ export default function AdminUsers() {
         }),
       });
 
-      if (response.ok) {
-        // Refresh the users list
-        fetchUsers(pagination?.page || 1, searchTerm, roleFilter, banFilter);
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.error}`);
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (err) {
+        // If not JSON, try to get text (could be HTML error page)
+        const text = await response.text();
+        console.error('Non-JSON error response:', text);
+        data = { error: 'Unexpected server error. Please check server logs.' };
       }
+
+      if (!response.ok) {
+        alert(`Error: ${data?.error || 'Failed to update user'}`);
+        return;
+      }
+      // Refresh the users list
+      fetchUsers(pagination?.page || 1, searchTerm, roleFilter, banFilter);
     } catch (error) {
       console.error('Error updating user:', error);
       alert('Failed to update user status');
