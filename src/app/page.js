@@ -1,6 +1,34 @@
 import Link from 'next/link';
 
 export default function Home() {
+  // Simulate login state
+  const [isLoggedIn, setIsLoggedIn] = useState(true); // Toggle for demo
+  const [showProfile, setShowProfile] = useState(false);
+  const [search, setSearch] = useState("");
+  const [availability, setAvailability] = useState("");
+
+  // Force light mode by removing any dark mode class from html
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  // Filter logic (placeholder)
+  const filteredProfiles = mockProfiles.filter((p) =>
+    p.isPublic &&
+    (search === "" ||
+      p.skillsOffered.some((s) => s.toLowerCase().includes(search.toLowerCase())) ||
+      p.skillsWanted.some((s) => s.toLowerCase().includes(search.toLowerCase()))
+    )
+  );
+
+  // Handlers
+  const handleLogout = () => setIsLoggedIn(false);
+  const handleSignup = () => alert('Signup flow here');
+  const handleProfileClick = () => setShowProfile(true);
+  const handleCloseProfile = () => setShowProfile(false);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
