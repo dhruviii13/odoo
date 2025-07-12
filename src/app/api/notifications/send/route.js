@@ -41,7 +41,7 @@ export async function POST(request) {
         const success = await sendNotificationToUser(
           user.fcmToken,
           title,
-          body,
+          messageBody,
           data
         );
         
@@ -64,7 +64,7 @@ export async function POST(request) {
         const success = await sendNotificationToUser(
           user.fcmToken,
           title,
-          body,
+          messageBody,
           data
         );
         

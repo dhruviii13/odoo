@@ -62,6 +62,59 @@ export default function PublicUserProfile() {
 }
 
 function SwapRequestModal({ user, onClose }) {
-  // ... implement swap request modal here (see next step)
-  return <div style={{ color: "#fff" }}>Swap request modal coming soon... <button onClick={onClose}>Close</button></div>;
+  const [offeredSkill, setOfferedSkill] = useState("");
+  const [requestedSkill, setRequestedSkill] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+    try {
+      const res = await fetch("/api/swap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          toUser: user._id,
+          offeredSkill,
+          requestedSkill,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to request swap");
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message || "Failed to request swap");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <form onSubmit={handleSubmit} style={{ background: "#181828", borderRadius: 16, padding: 32, minWidth: 320, color: "#fff", boxShadow: "0 8px 32px #000a" }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>Request Swap</h2>
+        <div style={{ marginBottom: 12 }}>
+          <label>Skill You Offer:</label>
+          <input value={offeredSkill} onChange={e => setOfferedSkill(e.target.value)} required style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #333", marginTop: 4 }} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label>Skill You Want:</label>
+          <input value={requestedSkill} onChange={e => setRequestedSkill(e.target.value)} required style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #333", marginTop: 4 }} />
+        </div>
+        {error && <div style={{ color: "#ff4d4f", marginBottom: 8 }}>{error}</div>}
+        {success && <div style={{ color: "#00ffb0", marginBottom: 8 }}>Swap request sent!</div>}
+        <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+          <button type="submit" disabled={loading} style={{ background: "#00fff7", color: "#222", fontWeight: 700, padding: "8px 24px", borderRadius: 8, border: "none", cursor: loading ? "not-allowed" : "pointer" }}>{loading ? "Sending..." : "Send Request"}</button>
+          <button type="button" onClick={onClose} style={{ background: "#222", color: "#fff", padding: "8px 24px", borderRadius: 8, border: "none", marginLeft: 8 }}>Close</button>
+        </div>
+      </form>
+    </div>
+  );
 } 

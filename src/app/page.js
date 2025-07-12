@@ -4,13 +4,76 @@ import { motion } from "framer-motion";
 import useSWR from "swr";
 
 const AVAILABILITY = ["Weekends", "Evenings", "Mornings"];
+
 const fetcher = (url) => fetch(url).then((res) => res.json());
+
+// SwapRequestModal component
+function SwapRequestModal({ user, onClose }) {
+  const [offeredSkill, setOfferedSkill] = useState("");
+  const [requestedSkill, setRequestedSkill] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+    try {
+      const res = await fetch("/api/swap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          toUser: user._id,
+          offeredSkill,
+          requestedSkill,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to request swap");
+      setSuccess(true);
+      setTimeout(() => onClose(), 2000);
+    } catch (err) {
+      setError(err.message || "Failed to request swap");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <form onSubmit={handleSubmit} style={{ background: "#181828", borderRadius: 16, padding: 32, minWidth: 320, color: "#fff", boxShadow: "0 8px 32px #000a" }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>Request Swap with {user.name}</h2>
+        <div style={{ marginBottom: 12 }}>
+          <label>Skill You Offer:</label>
+          <input value={offeredSkill} onChange={e => setOfferedSkill(e.target.value)} required style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #333", marginTop: 4, background: "#222", color: "#fff" }} />
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label>Skill You Want:</label>
+          <input value={requestedSkill} onChange={e => setRequestedSkill(e.target.value)} required style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #333", marginTop: 4, background: "#222", color: "#fff" }} />
+        </div>
+        {error && <div style={{ color: "#ff4d4f", marginBottom: 8 }}>{error}</div>}
+        {success && <div style={{ color: "#00ffb0", marginBottom: 8 }}>Swap request sent!</div>}
+        <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+          <button type="submit" disabled={loading} style={{ background: "#00fff7", color: "#222", fontWeight: 700, padding: "8px 24px", borderRadius: 8, border: "none", cursor: loading ? "not-allowed" : "pointer" }}>{loading ? "Sending..." : "Send Request"}</button>
+          <button type="button" onClick={onClose} style={{ background: "#222", color: "#fff", padding: "8px 24px", borderRadius: 8, border: "none", marginLeft: 8 }}>Close</button>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 export default function Home() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState(null);
   const [page, setPage] = useState(1);
   const [limit] = useState(12);
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const params = new URLSearchParams();
   if (search) params.append("search", search);
@@ -56,51 +119,48 @@ export default function Home() {
               ))}
             </div>
             {/* Buttons */}
-            <div className="flex gap-4 mt-6 justify-center md:justify-start">
-              <button className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl shadow-xl font-semibold text-lg hover:scale-105 transition">Browse Skills</button>
-              <button className="border border-white px-6 py-3 text-white rounded-xl font-semibold text-lg hover:bg-white/10 transition">Post Your Profile</button>
+            <div className="flex gap-4 mt-8 justify-center md:justify-start">
+              <button className="bg-gradient-to-r from-indigo-500 to-blue-500 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
+                Get Started
+              </button>
+              <button className="border border-white/20 text-white px-8 py-3 rounded-full font-bold hover:bg-white/10 transition-all">
+                Learn More
+              </button>
             </div>
           </div>
-          {/* Right: Illustration */}
+          {/* Right: Hero Image */}
           <div className="flex-1 flex justify-center">
-            <motion.img
-              src="/hero-illustration.png"
-              alt="SkillMate Illustration"
-              className="w-full max-w-md rounded-xl object-contain drop-shadow-lg"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-            />
+            <img src="/hero-illustration.png" alt="Skill Swap Illustration" className="w-full max-w-md" />
           </div>
         </div>
       </section>
-      {/* Profile Cards Grid */}
+
+      {/* Users Grid */}
       <section className="w-full py-20">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center text-gray-400 text-xl mb-8">Browse profiles</div>
+          <h2 className="text-3xl font-bold text-white mb-12 text-center">Find Your Skill Partner</h2>
           {isLoading ? (
-            <div className="text-center text-gray-300 text-xl py-24">Loading users…</div>
+            <div className="text-center text-gray-400">Loading users...</div>
           ) : error ? (
-            <div className="text-center text-red-300 text-xl py-24">Failed to load users.</div>
-          ) : users.length === 0 ? (
-            <div className="text-center text-gray-400 text-xl py-24">No users found.</div>
-          ) :
-            <motion.div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-4" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08 } } }}>
+            <div className="text-center text-red-400">Error loading users</div>
+          ) : (
+            <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {users.map((user) => (
                 <motion.div
                   key={user._id}
-                  className="bg-gray-900 rounded-xl p-6 shadow-lg hover:shadow-xl transition flex flex-col items-center border border-gray-800 hover:scale-105 duration-150"
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-6 hover:border-indigo-500/50 transition-all duration-300"
                 >
-                  <div className="w-20 h-20 rounded-full bg-gray-900 border-4 border-indigo-900 mb-4 overflow-hidden flex items-center justify-center">
-                    {user.profilePhoto ? (
-                      <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-3xl font-bold text-indigo-400">{user.name?.[0] || "?"}</span>
-                    )}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                      {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">{user.name}</h3>
+                      <p className="text-sm text-gray-400">{user.email}</p>
+                    </div>
                   </div>
-                  <div className="font-bold text-lg text-white mb-1">{user.name}</div>
                   <div className="flex flex-wrap gap-1 mb-2">
                     {(user.skillsOffered || []).map((skill) => (
                       <span key={skill} className="px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full text-xs font-semibold">{skill}</span>
@@ -115,41 +175,37 @@ export default function Home() {
                     <span className="inline-block w-2 h-2 rounded-full bg-green-400"></span>
                     <span className="text-xs text-gray-400 font-medium">{user.availability || "Available"}</span>
                   </div>
-                  <button className="w-full mt-auto py-2 px-4 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition">Request Swap</button>
+                  <button 
+                    className="w-full mt-auto py-2 px-4 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition" 
+                    onClick={() => { setSelectedUser(user); setShowSwapModal(true); }}
+                  >
+                    Request Swap
+                  </button>
                 </motion.div>
               ))}
             </motion.div>
-          }
+          )}
           {/* Pagination */}
           {pagination.pages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-10">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className={`px-3 py-1 rounded-lg font-semibold border ${page === 1 ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-black text-indigo-400 border-indigo-900 hover:bg-indigo-950"}`}
-              >
-                &laquo; Prev
-              </button>
-              {Array.from({ length: pagination.pages }, (_, i) => (
+            <div className="flex justify-center gap-2 mt-12">
+              {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((p) => (
                 <button
-                  key={i + 1}
-                  onClick={() => setPage(i + 1)}
-                  className={`px-3 py-1 rounded-lg font-semibold border ${page === i + 1 ? "bg-indigo-600 text-white border-indigo-600" : "bg-black text-indigo-400 border-indigo-900 hover:bg-indigo-950"}`}
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition ${
+                    p === page
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
                 >
-                  {i + 1}
+                  {p}
                 </button>
               ))}
-              <button
-                onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
-                disabled={page === pagination.pages}
-                className={`px-3 py-1 rounded-lg font-semibold border ${page === pagination.pages ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-black text-indigo-400 border-indigo-900 hover:bg-indigo-950"}`}
-              >
-                Next &raquo;
-              </button>
             </div>
           )}
         </div>
       </section>
+      {showSwapModal && selectedUser && <SwapRequestModal user={selectedUser} onClose={() => setShowSwapModal(false)} />}
     </div>
   );
 }

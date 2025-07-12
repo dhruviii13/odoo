@@ -1,84 +1,39 @@
-import { NextResponse } from 'next/server';
-import User from '@/models/User';
-import mongoose from 'mongoose';
+import { dbConnect } from '../../../../lib/db';
+import User from '../../../../models/User';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { signToken } from '../../../../lib/auth';
+import { z } from 'zod';
 
-export async function POST(request) {
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+export async function POST(req) {
   try {
-    const body = await request.json();
-    const { email, password } = body;
-
-    if (!email || !password) {
-      return NextResponse.json(
-        {
-          error: 'Missing required parameters',
-          message: 'Email and password are required'
-        },
-        { status: 400 }
-      );
+    await dbConnect();
+    const body = await req.json();
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      console.error('Login validation error:', parsed.error);
+      return Response.json({ error: 'Invalid input', details: parsed.error }, { status: 400 });
     }
-
-    // Connect to MongoDB if not already connected
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI);
-    }
-
-    // Find user by email
+    const { email, password } = parsed.data;
     const user = await User.findOne({ email });
     if (!user) {
-      return NextResponse.json(
-        {
-          error: 'Invalid credentials',
-          message: 'Email or password is incorrect'
-        },
-        { status: 401 }
-      );
+      console.error('Login failed: User not found for email:', email);
+      return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
-
-    // Compare password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return NextResponse.json(
-        {
-          error: 'Invalid credentials',
-          message: 'Email or password is incorrect'
-        },
-        { status: 401 }
-      );
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      console.error('Login failed: Invalid password for email:', email);
+      return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        sub: user._id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    // Return user info (excluding password)
-    return NextResponse.json({
-      success: true,
-      token: token,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        profilePhoto: user.profilePhoto,
-      },
-      message: 'Login successful'
-    });
+    const token = signToken({ id: user._id, email: user.email });
+    console.log('Login successful for user:', user.email);
+    return Response.json({ token, user: { id: user._id, name: user.name, email: user.email } });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: 'An error occurred during login'
-      },
-      { status: 500 }
-    );
+    return Response.json({ error: 'Server error' }, { status: 500 });
   }
 }

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 export default function LoginPage() {
   const [tab, setTab] = useState("login");
-  const [form, setForm] = useState({ email: "", password: "", username: "" });
+  const [form, setForm] = useState({ email: "", password: "", name: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function LoginPage() {
       const endpoint = tab === "login" ? "/api/user/login" : "/api/user/signup";
       const payload = tab === "login"
         ? { email: form.email, password: form.password }
-        : { email: form.email, password: form.password, username: form.username };
+        : { email: form.email, password: form.password, name: form.name };
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -34,6 +34,7 @@ export default function LoginPage() {
         router.push("/profile");
       } else {
         setError(data.message || data.error || "Login failed");
+        console.error('Login error:', data);
       }
     } catch (err) {
       setError("Network error");
@@ -81,10 +82,10 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             {tab === "signup" && (
               <input
-                name="username"
+                name="name"
                 type="text"
-                placeholder="Username"
-                value={form.username}
+                placeholder="Name"
+                value={form.name}
                 onChange={handleChange}
                 className="bg-gray-800 text-white placeholder-gray-400 px-4 py-2 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 required

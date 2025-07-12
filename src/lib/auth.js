@@ -3,11 +3,16 @@ import { NextResponse } from 'next/server';
 import dbConnect from './db';
 import User from '../models/User';
 
-// Verify JWT token
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+
+export function signToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+}
+
 export function verifyToken(token) {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
-  } catch (error) {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (e) {
     return null;
   }
 }

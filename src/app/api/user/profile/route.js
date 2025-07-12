@@ -1,71 +1,54 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import User from '@/models/User';
+import { dbConnect } from '../../../../lib/db';
+import User from '../../../../models/User';
+import { verifyToken } from '../../../../lib/auth';
+import { z } from 'zod';
 
-// Minimal JWT decode for Edge compatibility
-function decodeJWT(token) {
-  try {
-    const payload = token.split('.')[1];
-    return JSON.parse(atob(payload));
-  } catch {
-    return null;
-  }
-}
+const profileSchema = z.object({
+  name: z.string().min(2),
+  avatar: z.string().optional(),
+  isPublic: z.boolean(),
+  availability: z.array(z.string()),
+  skillsOffered: z.array(z.string()),
+  skillsWanted: z.array(z.string()),
+});
 
-export async function GET(request) {
-  try {
-    await dbConnect();
-    const auth = request.headers.get('authorization');
-    if (!auth || !auth.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const token = auth.replace('Bearer ', '');
-    const decoded = decodeJWT(token);
-    if (!decoded?.sub) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-    const user = await User.findById(decoded.sub).select('-password -fcmToken -isBanned -emailVerified -resetToken');
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-    return NextResponse.json({ user });
-  } catch (error) {
-    console.error('Profile GET error:', error);
-    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
-  }
-}
-
-export async function PATCH(request) {
+export async function GET(req) {
   try {
     await dbConnect();
-    const auth = request.headers.get('authorization');
-    if (!auth || !auth.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = req.headers.get('authorization');
+    if (!auth) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const token = auth.replace('Bearer ', '');
-    const decoded = decodeJWT(token);
-    if (!decoded?.sub) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-    const body = await request.json();
-    const update = {
-      name: body.name,
-      location: body.location,
-      skillsOffered: body.skillsOffered,
-      skillsWanted: body.skillsWanted,
-      availability: body.availability,
-      isPublic: body.isPublic,
-      profilePhoto: body.profilePhoto,
-    };
-    const user = await User.findByIdAndUpdate(decoded.sub, update, { new: true }).select('-password -fcmToken -isBanned -emailVerified -resetToken');
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-    return NextResponse.json({ user });
-  } catch (error) {
-    console.error('Profile PATCH error:', error);
-    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+    const payload = verifyToken(token);
+    if (!payload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await User.findById(payload.id).select('-password');
+    if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
+    return Response.json({ user });
+  } catch (err) {
+    console.error('GET /api/user/profile error:', err);
+    return Response.json({ error: err.message || 'Server error' }, { status: 500 });
   }
 }
 
-export { PATCH as PUT }; 
+export async function PUT(req) {
+  try {
+    await dbConnect();
+    const auth = req.headers.get('authorization');
+    if (!auth) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = auth.replace('Bearer ', '');
+    const payload = verifyToken(token);
+    if (!payload) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await req.json();
+    const parsed = profileSchema.safeParse(body);
+    if (!parsed.success) return Response.json({ error: 'Invalid input', details: parsed.error }, { status: 400 });
+    const user = await User.findByIdAndUpdate(
+      payload.id,
+      { $set: parsed.data },
+      { new: true, select: '-password' }
+    );
+    if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
+    return Response.json({ user });
+  } catch (err) {
+    console.error('PUT /api/user/profile error:', err);
+    return Response.json({ error: err.message || 'Server error' }, { status: 500 });
+  }
+} 

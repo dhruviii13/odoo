@@ -1,72 +1,23 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '../../../../lib/db';
+import { dbConnect } from '../../../../lib/db';
 import User from '../../../../models/User';
-import { getCurrentAdmin } from '../../../../lib/adminAuth';
 
-// GET /api/admin/users - Get all users with pagination and filters
-export async function GET(request) {
-  try {
-    await dbConnect();
-    await getCurrentAdmin(); // Verify admin access
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 20;
-    const search = searchParams.get('search') || '';
-    const role = searchParams.get('role') || '';
-    const isBanned = searchParams.get('isBanned') || '';
-
-    const skip = (page - 1) * limit;
-
-    // Build query
-    const query = {};
-    
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    if (role) {
-      query.role = role;
-    }
-
-    if (isBanned !== '') {
-      query.isBanned = isBanned === 'true';
-    }
-
-    // Get users with pagination
-    const users = await User.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    // Get total count for pagination
-    const total = await User.countDocuments(query);
-
-    // Add skills count to each user
-    const usersWithSkillsCount = users.map(user => ({
-      ...user,
-      skillsCount: (user.skillsOffered?.length || 0) + (user.skillsWanted?.length || 0)
-    }));
-
-    return NextResponse.json({
-      users: usersWithSkillsCount,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    });
-  } catch (error) {
-    console.error('Admin Users GET Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch users' },
-      { status: 500 }
-    );
-  }
+export async function GET(req) {
+  await dbConnect();
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const limit = parseInt(searchParams.get('limit') || '20', 10);
+  const total = await User.countDocuments();
+  const users = await User.find()
+    .select('-password')
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .lean();
+  return Response.json({
+    users,
+    pagination: {
+      page,
+      pages: Math.ceil(total / limit),
+      total,
+    },
+  });
 } 

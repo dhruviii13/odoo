@@ -89,9 +89,9 @@ export default function ProfilePage() {
       setForm({
         name: user.name || "",
         location: user.location || "",
-        skillsOffered: user.skillsOffered || [],
-        skillsWanted: user.skillsWanted || [],
-        availability: user.availability || [],
+        skillsOffered: Array.isArray(user.skillsOffered) ? user.skillsOffered : (typeof user.skillsOffered === 'string' ? user.skillsOffered.split(',').map(s => s.trim()).filter(Boolean) : []),
+        skillsWanted: Array.isArray(user.skillsWanted) ? user.skillsWanted : (typeof user.skillsWanted === 'string' ? user.skillsWanted.split(',').map(s => s.trim()).filter(Boolean) : []),
+        availability: Array.isArray(user.availability) ? user.availability : (typeof user.availability === 'string' ? user.availability.split(',').map(s => s.trim()).filter(Boolean) : []),
         isPublic: user.isPublic || false,
       });
     }
@@ -114,41 +114,50 @@ export default function ProfilePage() {
     }));
   };
 
-  const handleSkills = (type, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [type]: value.split(",").map((s) => s.trim()).filter(Boolean),
-    }));
-  };
-
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const handleSave = async () => {
     setSaving(true);
     setErrorMsg("");
     try {
+      const payload = {
+        name: form.name || "",
+        location: form.location || "",
+        avatar: form.avatar || "",
+        isPublic: typeof form.isPublic === 'boolean' ? form.isPublic : false,
+        availability: Array.isArray(form.availability) ? form.availability : [],
+        skillsOffered: Array.isArray(form.skillsOffered) ? form.skillsOffered : [],
+        skillsWanted: Array.isArray(form.skillsWanted) ? form.skillsWanted : [],
+      };
       const res = await fetch("/api/user/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Failed to update profile");
+      if (!res.ok) {
+        const errText = await res.text();
+        setErrorMsg(`Failed to update profile: ${errText}`);
+        console.error('Profile save error:', errText);
+        throw new Error(`Failed to update profile: ${errText}`);
+      }
       await mutate();
     } catch (err) {
       setErrorMsg(err.message || "Failed to update profile");
+      console.error("Profile save error:", err);
     }
     setSaving(false);
   };
+  
   const handleCancel = () => {
     setForm({
       name: user.name || "",
       location: user.location || "",
-      skillsOffered: user.skillsOffered || [],
-      skillsWanted: user.skillsWanted || [],
-      availability: user.availability || [],
+      skillsOffered: Array.isArray(user.skillsOffered) ? user.skillsOffered : (typeof user.skillsOffered === 'string' ? user.skillsOffered.split(',').map(s => s.trim()).filter(Boolean) : []),
+      skillsWanted: Array.isArray(user.skillsWanted) ? user.skillsWanted : (typeof user.skillsWanted === 'string' ? user.skillsWanted.split(',').map(s => s.trim()).filter(Boolean) : []),
+      availability: Array.isArray(user.availability) ? user.availability : (typeof user.availability === 'string' ? user.availability.split(',').map(s => s.trim()).filter(Boolean) : []),
       isPublic: user.isPublic || false,
     });
     setErrorMsg("");

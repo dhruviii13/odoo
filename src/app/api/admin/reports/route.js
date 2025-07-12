@@ -5,6 +5,122 @@ import Swap from '../../../../models/Swap';
 import { getCurrentAdmin } from '../../../../lib/adminAuth';
 import { Parser } from 'json2csv';
 
+// Report generation functions
+async function generateUsersReport() {
+  const users = await User.find({}).select('-password').lean();
+  return users.map(user => ({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    isPublic: user.isPublic,
+    isBanned: user.isBanned,
+    skillsOffered: user.skillsOffered?.join(', ') || '',
+    skillsWanted: user.skillsWanted?.join(', ') || '',
+    availability: user.availability?.join(', ') || '',
+    createdAt: user.createdAt,
+    lastActive: user.lastActive
+  }));
+}
+
+async function generateSwapsReport() {
+  const swaps = await Swap.find({})
+    .populate('fromUser', 'name email')
+    .populate('toUser', 'name email')
+    .lean();
+  
+  return swaps.map(swap => ({
+    id: swap._id,
+    fromUser: swap.fromUser?.name || 'Unknown',
+    fromEmail: swap.fromUser?.email || '',
+    toUser: swap.toUser?.name || 'Unknown',
+    toEmail: swap.toUser?.email || '',
+    offeredSkill: swap.offeredSkill,
+    requestedSkill: swap.requestedSkill,
+    status: swap.status,
+    createdAt: swap.createdAt,
+    acceptedAt: swap.acceptedAt,
+    rejectedAt: swap.rejectedAt
+  }));
+}
+
+async function generateSkillsReport() {
+  const users = await User.find({}).select('skillsOffered skillsWanted').lean();
+  const skillCounts = {};
+  
+  users.forEach(user => {
+    [...(user.skillsOffered || []), ...(user.skillsWanted || [])].forEach(skill => {
+      skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+    });
+  });
+  
+  return Object.entries(skillCounts).map(([skill, count]) => ({
+    skill,
+    count,
+    offeredCount: users.filter(u => u.skillsOffered?.includes(skill)).length,
+    wantedCount: users.filter(u => u.skillsWanted?.includes(skill)).length
+  }));
+}
+
+async function generateSummaryReport() {
+  const totalUsers = await User.countDocuments();
+  const activeUsers = await User.countDocuments({ isBanned: { $ne: true } });
+  const bannedUsers = await User.countDocuments({ isBanned: true });
+  const totalSwaps = await Swap.countDocuments();
+  const pendingSwaps = await Swap.countDocuments({ status: 'pending' });
+  const acceptedSwaps = await Swap.countDocuments({ status: 'accepted' });
+  const rejectedSwaps = await Swap.countDocuments({ status: 'rejected' });
+  
+  const users = await User.find({}).select('skillsOffered skillsWanted').lean();
+  const uniqueSkills = new Set();
+  users.forEach(user => {
+    [...(user.skillsOffered || []), ...(user.skillsWanted || [])].forEach(skill => uniqueSkills.add(skill));
+  });
+  
+  return [
+    { metric: 'Total Users', value: totalUsers },
+    { metric: 'Active Users', value: activeUsers },
+    { metric: 'Banned Users', value: bannedUsers },
+    { metric: 'Total Swaps', value: totalSwaps },
+    { metric: 'Pending Swaps', value: pendingSwaps },
+    { metric: 'Accepted Swaps', value: acceptedSwaps },
+    { metric: 'Rejected Swaps', value: rejectedSwaps },
+    { metric: 'Unique Skills', value: uniqueSkills.size }
+  ];
+}
+
+// Mock data functions for fallback
+function generateMockUsersReport() {
+  return [
+    { id: '1', name: 'John Doe', email: 'john@example.com', isPublic: true, isBanned: false, skillsOffered: 'JavaScript, React', skillsWanted: 'Python, Django', availability: 'Weekends', createdAt: new Date(), lastActive: new Date() }
+  ];
+}
+
+function generateMockSwapsReport() {
+  return [
+    { id: '1', fromUser: 'John Doe', fromEmail: 'john@example.com', toUser: 'Jane Smith', toEmail: 'jane@example.com', offeredSkill: 'JavaScript', requestedSkill: 'Python', status: 'pending', createdAt: new Date() }
+  ];
+}
+
+function generateMockSkillsReport() {
+  return [
+    { skill: 'JavaScript', count: 15, offeredCount: 10, wantedCount: 5 },
+    { skill: 'Python', count: 12, offeredCount: 8, wantedCount: 4 }
+  ];
+}
+
+function generateMockSummaryReport() {
+  return [
+    { metric: 'Total Users', value: 150 },
+    { metric: 'Active Users', value: 142 },
+    { metric: 'Banned Users', value: 8 },
+    { metric: 'Total Swaps', value: 89 },
+    { metric: 'Pending Swaps', value: 23 },
+    { metric: 'Accepted Swaps', value: 45 },
+    { metric: 'Rejected Swaps', value: 21 },
+    { metric: 'Unique Skills', value: 67 }
+  ];
+}
+
 // GET /api/admin/reports - Generate and download reports
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -95,309 +211,4 @@ export async function GET(request) {
     filename,
     generatedAt: new Date().toISOString()
   });
-}
-
-// Generate users report
-async function generateUsersReport() {
-  const users = await User.find({})
-    .select('-password')
-    .lean();
-
-  return users.map(user => ({
-    id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    isBanned: user.isBanned,
-    banReason: user.banReason || '',
-    profilePublic: user.profilePublic,
-    skillsOffered: user.skillsOffered?.join(', ') || '',
-    skillsWanted: user.skillsWanted?.join(', ') || '',
-    availability: user.availability?.join(', ') || '',
-    location: user.location || '',
-    skillsCount: (user.skillsOffered?.length || 0) + (user.skillsWanted?.length || 0),
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
-  }));
-}
-
-// Generate swaps report
-async function generateSwapsReport() {
-  const swaps = await Swap.find({})
-    .populate('fromUser', 'name email')
-    .populate('toUser', 'name email')
-    .lean();
-
-  return swaps.map(swap => ({
-    id: swap._id.toString(),
-    fromUser: swap.fromUser?.name || 'Unknown',
-    fromEmail: swap.fromUser?.email || '',
-    toUser: swap.toUser?.name || 'Unknown',
-    toEmail: swap.toUser?.email || '',
-    offeredSkill: swap.offeredSkill,
-    requestedSkill: swap.requestedSkill,
-    message: swap.message || '',
-    status: swap.status,
-    createdAt: swap.createdAt,
-    acceptedAt: swap.acceptedAt,
-    rejectedAt: swap.rejectedAt,
-    cancelledAt: swap.cancelledAt
-  }));
-}
-
-// Generate skills report
-async function generateSkillsReport() {
-  const skillsPipeline = [
-    {
-      $project: {
-        allSkills: {
-          $concatArrays: ['$skillsOffered', '$skillsWanted']
-        }
-      }
-    },
-    {
-      $unwind: '$allSkills'
-    },
-    {
-      $group: {
-        _id: '$allSkills',
-        count: { $sum: 1 },
-        offeredCount: {
-          $sum: {
-            $cond: [
-              { $in: ['$allSkills', '$skillsOffered'] },
-              1,
-              0
-            ]
-          }
-        },
-        wantedCount: {
-          $sum: {
-            $cond: [
-              { $in: ['$allSkills', '$skillsWanted'] },
-              1,
-              0
-            ]
-          }
-        }
-      }
-    },
-    {
-      $project: {
-        skill: '$_id',
-        totalCount: '$count',
-        offeredCount: '$offeredCount',
-        wantedCount: '$wantedCount',
-        _id: 0
-      }
-    },
-    {
-      $sort: { totalCount: -1, skill: 1 }
-    }
-  ];
-
-  return await User.aggregate(skillsPipeline);
-}
-
-// Generate summary report
-async function generateSummaryReport() {
-  const [
-    totalUsers,
-    activeUsers,
-    bannedUsers,
-    totalSwaps,
-    pendingSwaps,
-    acceptedSwaps,
-    rejectedSwaps,
-    skillsData
-  ] = await Promise.all([
-    User.countDocuments(),
-    User.countDocuments({ isBanned: false }),
-    User.countDocuments({ isBanned: true }),
-    Swap.countDocuments(),
-    Swap.countDocuments({ status: 'pending' }),
-    Swap.countDocuments({ status: 'accepted' }),
-    Swap.countDocuments({ status: 'rejected' }),
-    generateSkillsReport()
-  ]);
-
-  const topSkills = skillsData.slice(0, 10);
-
-  return [{
-    metric: 'Total Users',
-    value: totalUsers,
-    description: 'Total number of registered users'
-  }, {
-    metric: 'Active Users',
-    value: activeUsers,
-    description: 'Users who are not banned'
-  }, {
-    metric: 'Banned Users',
-    value: bannedUsers,
-    description: 'Users who are currently banned'
-  }, {
-    metric: 'Total Swaps',
-    value: totalSwaps,
-    description: 'Total number of swap requests'
-  }, {
-    metric: 'Pending Swaps',
-    value: pendingSwaps,
-    description: 'Swaps awaiting response'
-  }, {
-    metric: 'Accepted Swaps',
-    value: acceptedSwaps,
-    description: 'Successfully completed swaps'
-  }, {
-    metric: 'Rejected Swaps',
-    value: rejectedSwaps,
-    description: 'Rejected swap requests'
-  }, {
-    metric: 'Unique Skills',
-    value: skillsData.length,
-    description: 'Total unique skills offered/wanted'
-  }, {
-    metric: 'Top Skill',
-    value: topSkills[0]?.skill || 'None',
-    description: 'Most popular skill'
-  }, {
-    metric: 'Top Skill Count',
-    value: topSkills[0]?.totalCount || 0,
-    description: 'Number of users with top skill'
-  }];
-}
-
-// Mock data functions for demo purposes
-function generateMockUsersReport() {
-  return [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'user',
-      isBanned: false,
-      banReason: '',
-      profilePublic: true,
-      skillsOffered: 'JavaScript, React',
-      skillsWanted: 'Python, Design',
-      availability: 'weekends, evenings',
-      location: 'New York',
-      skillsCount: 4,
-      createdAt: '2024-01-15T10:00:00Z',
-      updatedAt: '2024-01-20T15:30:00Z'
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      role: 'user',
-      isBanned: false,
-      banReason: '',
-      profilePublic: true,
-      skillsOffered: 'Python, Data Analysis',
-      skillsWanted: 'JavaScript, UI/UX',
-      availability: 'weekdays',
-      location: 'San Francisco',
-      skillsCount: 4,
-      createdAt: '2024-01-10T09:00:00Z',
-      updatedAt: '2024-01-18T14:20:00Z'
-    }
-  ];
-}
-
-function generateMockSwapsReport() {
-  return [
-    {
-      id: '1',
-      fromUser: 'John Doe',
-      fromEmail: 'john@example.com',
-      toUser: 'Jane Smith',
-      toEmail: 'jane@example.com',
-      offeredSkill: 'JavaScript',
-      requestedSkill: 'Python',
-      message: 'I can help you with JavaScript in exchange for Python lessons',
-      status: 'pending',
-      createdAt: '2024-01-20T10:00:00Z',
-      acceptedAt: null,
-      rejectedAt: null,
-      cancelledAt: null
-    }
-  ];
-}
-
-function generateMockSkillsReport() {
-  return [
-    {
-      skill: 'JavaScript',
-      totalCount: 25,
-      offeredCount: 15,
-      wantedCount: 10
-    },
-    {
-      skill: 'Python',
-      totalCount: 20,
-      offeredCount: 12,
-      wantedCount: 8
-    },
-    {
-      skill: 'React',
-      totalCount: 18,
-      offeredCount: 10,
-      wantedCount: 8
-    }
-  ];
-}
-
-function generateMockSummaryReport() {
-  return [
-    {
-      metric: 'Total Users',
-      value: 150,
-      description: 'Total number of registered users'
-    },
-    {
-      metric: 'Active Users',
-      value: 142,
-      description: 'Users who are not banned'
-    },
-    {
-      metric: 'Banned Users',
-      value: 8,
-      description: 'Users who are currently banned'
-    },
-    {
-      metric: 'Total Swaps',
-      value: 89,
-      description: 'Total number of swap requests'
-    },
-    {
-      metric: 'Pending Swaps',
-      value: 23,
-      description: 'Swaps awaiting response'
-    },
-    {
-      metric: 'Accepted Swaps',
-      value: 45,
-      description: 'Successfully completed swaps'
-    },
-    {
-      metric: 'Rejected Swaps',
-      value: 21,
-      description: 'Rejected swap requests'
-    },
-    {
-      metric: 'Unique Skills',
-      value: 67,
-      description: 'Total unique skills offered/wanted'
-    },
-    {
-      metric: 'Top Skill',
-      value: 'JavaScript',
-      description: 'Most popular skill'
-    },
-    {
-      metric: 'Top Skill Count',
-      value: 25,
-      description: 'Number of users with top skill'
-    }
-  ];
 } 
