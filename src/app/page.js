@@ -150,9 +150,9 @@ export default function Home() {
                     overflow: "hidden",
                   }}
                 >
-                  {user.profilePhoto ? (
+                  {user.photoUrl ? (
                     <img
-                      src={user.profilePhoto}
+                      src={user.photoUrl}
                       alt={user.name}
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
